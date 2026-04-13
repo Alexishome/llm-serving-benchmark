@@ -15,7 +15,7 @@ python3 main.py --config "${CONFIG_PATH}"
 
 echo
 echo "Run complete. Summary:"
-SUMMARY_PATH=$(python3 - <<'PY'
+SUMMARY_PATH=$(python3 - "${CONFIG_PATH}" <<'PY'
 import sys, yaml
 from pathlib import Path
 config_path = Path(sys.argv[1])
@@ -23,7 +23,7 @@ with config_path.open("r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 print(config["results"]["summary_csv"])
 PY
-"${CONFIG_PATH}")
+)
 
 if [ -f "${SUMMARY_PATH}" ]; then
   cat "${SUMMARY_PATH}"
