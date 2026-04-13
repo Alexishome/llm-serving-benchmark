@@ -1,0 +1,78 @@
+project:
+  name: "LLM Serving Benchmark Framework for Clinical NLP Workloads"
+  seed: 42
+
+workload:
+  mode: "synthetic"
+  tokenizer_name: "distilgpt2"
+  cost_model:
+    input_weight: 1.0
+    output_weight: 1.4
+    kv_cache_weight: 0.2
+    task_weights:
+      question_answering: 0.9
+      information_extraction: 1.0
+      summarization: 1.2
+  num_requests: 50
+  task_types:
+    - "summarization"
+    - "question_answering"
+    - "information_extraction"
+  input_length_distribution:
+    short: [128, 512]
+    medium: [512, 2048]
+    long: [2048, 4096]
+  output_length_distribution:
+    short: [32, 128]
+    medium: [128, 256]
+    long: [256, 512]
+  bucket_weights:
+    short: 0.4
+    medium: 0.4
+    long: 0.2
+
+experiments:
+  concurrency_levels: [1, 4, 8]
+  request_rates: [1.0, 4.0]
+  batch_sizes: [1]
+  trials: 3
+  cost_per_1m_tokens: null
+
+scheduler:
+  policy: "predicted_cost_first"
+  input_weight: 1.0
+  output_weight: 1.0
+  task_priorities:
+    question_answering: 1
+    information_extraction: 2
+    summarization: 3
+
+engines:
+  default_kwargs:
+    temperature: 0.0
+  backends:
+    - name: "vllm"
+      enabled: false
+      model: "meta-llama/Llama-3.1-8B-Instruct"
+      base_url: "http://localhost:8000"
+    - name: "tgi"
+      enabled: false
+      model: "meta-llama/Llama-3.1-8B-Instruct"
+      base_url: "http://localhost:8080"
+    - name: "hf_transformers"
+      enabled: true
+      model: "distilgpt2"
+      device: "cpu"
+
+results:
+  output_dir: "results"
+  request_csv: "results/request_metrics.csv"
+  request_json: "results/request_metrics.json"
+  summary_csv: "results/summary_metrics.csv"
+  summary_json: "results/summary_metrics.json"
+  gpu_csv: "results/gpu_metrics.csv"
+  plots_dir: "results/plots"
+
+gpu_monitor:
+  enabled: true
+  poll_interval: 1.0

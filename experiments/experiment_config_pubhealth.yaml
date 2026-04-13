@@ -1,0 +1,63 @@
+project:
+  name: "LLM Serving Benchmark Framework for Clinical NLP Workloads"
+  seed: 42
+
+workload:
+  mode: "pubhealth"
+  dataset_path: "data/data acl"
+  tokenizer_name: "distilgpt2"
+  cost_model:
+    input_weight: 1.0
+    output_weight: 1.1
+    kv_cache_weight: 0.1
+    task_weights:
+      question_answering: 1.0
+      information_extraction: 1.0
+      summarization: 1.0
+  num_requests: 200
+
+experiments:
+  concurrency_levels: [1, 4, 8]
+  request_rates: [1.0, 2.0]
+  batch_sizes: [1]
+  trials: 2
+  cost_per_1m_tokens: null
+
+scheduler:
+  policy: "predicted_cost_first"
+  input_weight: 1.0
+  output_weight: 1.0
+  task_priorities:
+    question_answering: 1
+    information_extraction: 2
+    summarization: 2
+
+engines:
+  default_kwargs:
+    temperature: 0.0
+  backends:
+    - name: "vllm"
+      enabled: true
+      model: "Qwen/Qwen2.5-1.5B-Instruct"
+      base_url: "http://localhost:8000"
+    - name: "tgi"
+      enabled: false
+      model: "Qwen/Qwen2.5-1.5B-Instruct"
+      base_url: "http://localhost:8080"
+    - name: "hf_transformers"
+      enabled: false
+      model: "distilgpt2"
+      device: "cpu"
+
+results:
+  output_dir: "results/pubhealth"
+  request_csv: "results/pubhealth/request_metrics.csv"
+  request_json: "results/pubhealth/request_metrics.json"
+  summary_csv: "results/pubhealth/summary_metrics.csv"
+  summary_json: "results/pubhealth/summary_metrics.json"
+  gpu_csv: "results/pubhealth/gpu_metrics.csv"
+  plots_dir: "results/pubhealth/plots"
+
+gpu_monitor:
+  enabled: true
+  poll_interval: 1.0

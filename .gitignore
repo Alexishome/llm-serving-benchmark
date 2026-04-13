@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.ipynb_checkpoints/
+.pytest_cache/
+
+data/
+results/
+
+vllm-env/
+.venv/
+venv/
+
+*.tgz
+*.tar.gz
