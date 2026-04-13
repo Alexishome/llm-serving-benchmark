@@ -22,12 +22,19 @@ class HFLocalEngine(BaseEngine):
         self._pipeline = None
 
     async def startup(self) -> None:
+        import torch
         from transformers import pipeline
 
         pipeline_device: str | int
         if self.device == "cpu":
             pipeline_device = -1
         elif self.device == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError(
+                    "HF baseline requested CUDA, but torch.cuda.is_available() is False. "
+                    "This usually means the installed torch build is not compatible with the "
+                    "current NVIDIA driver/runtime on the pod."
+                )
             pipeline_device = 0
         else:
             pipeline_device = self.device

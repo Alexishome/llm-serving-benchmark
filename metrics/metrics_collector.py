@@ -104,6 +104,25 @@ class MetricsCollector:
         trial_duration_seconds: float,
         cost_per_1m_tokens: float | None = None,
     ) -> ExperimentSummary:
+        if request_df.empty:
+            request_df = pd.DataFrame(
+                columns=[
+                    "success",
+                    "input_tokens",
+                    "output_tokens",
+                    "latency",
+                    "ttft",
+                    "tokens_per_second",
+                    "queue_delay",
+                    "predicted_cost",
+                    "output_text",
+                    "total_tokens",
+                ]
+            )
+        elif "success" not in request_df.columns:
+            request_df = request_df.copy()
+            request_df["success"] = False
+
         success_df = request_df[request_df["success"] == True]  # noqa: E712
         success_rate = float(request_df["success"].mean()) if not request_df.empty else 0.0
         error_rate = 1.0 - success_rate
