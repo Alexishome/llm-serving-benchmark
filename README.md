@@ -76,12 +76,39 @@ python main.py --config experiments/experiment_config_cochrane.yaml
 python main.py --config experiments/experiment_config_mimic_bhc.yaml
 ```
 
+For the simplest remote GPU smoke test on the same machine that is hosting `vLLM`:
+
+```bash
+python main.py --config experiments/experiment_config_remote_synthetic_vllm.yaml
+```
+
 Results are written to the `results/` directory:
 
 - Request-level metrics in CSV and JSON
 - Trial summary metrics in CSV and JSON
 - GPU samples in CSV
 - Benchmark plots in `results/plots/`
+- Per-run summaries in `run_summary_*.md` / `run_summary_*.json`
+- A global run index in `results/run_history.csv`
+
+## Remote Run Workflow
+
+If you use a remote GPU machine for `vLLM`, a simple long-term workflow is:
+
+```bash
+cd /workspace
+git clone https://github.com/Alexishome/llm-serving-benchmark.git
+cd llm-serving-benchmark
+source /workspace/vllm-env/bin/activate
+pip install -r requirements.txt
+bash run_remote.sh
+```
+
+Notes:
+
+- Keep `vllm serve ... --host 0.0.0.0 --port 8000` running in a separate terminal.
+- The remote smoke-test config uses `http://127.0.0.1:8000`, so benchmark requests and GPU monitoring happen on the same machine.
+- This is the easiest way to populate `gpu_utilization_mean` and `gpu_memory_mb_mean`.
 
 ## Configuration Notes
 
