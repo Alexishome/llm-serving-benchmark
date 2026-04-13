@@ -110,6 +110,21 @@ Notes:
 - The remote smoke-test config uses `http://127.0.0.1:8000`, so benchmark requests and GPU monitoring happen on the same machine.
 - This is the easiest way to populate `gpu_utilization_mean` and `gpu_memory_mb_mean`.
 
+To automate a same-machine comparison between `vLLM` and the `HF Transformers` baseline:
+
+```bash
+bash run_remote_compare_vllm_vs_hf.sh
+```
+
+This script will:
+
+- stop any existing `vllm serve` process
+- start a temporary `vLLM` server
+- wait until `http://127.0.0.1:8000/v1/models` is ready
+- run the remote `vLLM` experiment
+- stop `vLLM`
+- run the remote `HF Transformers` baseline
+
 ## Configuration Notes
 
 - Use `workload.mode: dataset` with `dataset_path` to benchmark real prompts from JSON or CSV.
