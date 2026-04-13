@@ -191,3 +191,21 @@ ACL-backed workload modes currently supported:
 - Extend the workload-aware scheduler with additional policies or routing strategies in `scheduler/`
 - Extend experiment sweeps in `experiments/experiment_config.yaml`
 - Add richer metrics or dashboards on top of the exported result tables
+
+## Lightweight Quality Evaluation
+
+The framework now preserves `output_text`, `expected_output`, `dataset_name`, and related metadata in request-level results so you can run lightweight quality checks after benchmarking.
+
+Example:
+
+```bash
+python quality/evaluate_quality.py \
+  --request-metrics results/mimic_bhc/request_metrics.json
+```
+
+Current support includes:
+
+- general validity metrics such as `success_rate`, `non_empty_rate`, and `valid_response_rate`
+- label-based automatic evaluation for `pubhealth` with `accuracy` and `macro_f1`
+
+This is intended as a lightweight quality sanity check to complement serving metrics, not as a full task-benchmark replacement.

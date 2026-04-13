@@ -35,6 +35,8 @@ class ExperimentSummary:
     queue_delay_mean: float
     queue_delay_std: float
     queue_delay_p95: float
+    non_empty_rate: float
+    valid_response_rate: float
     predicted_cost_mean: float
     predicted_cost_total: float
     cost_efficiency_tokens_per_cost: float | None
@@ -75,6 +77,7 @@ class MetricsCollector:
                 "tokens_per_second": tokens_per_second,
                 "success": response.success,
                 "error": response.error,
+                "output_text": response.output_text,
                 "queue_delay": response.metadata.get("queue_delay", 0.0),
                 "scheduler_policy": response.metadata.get(
                     "scheduler_policy",
@@ -84,6 +87,10 @@ class MetricsCollector:
                 "input_bucket": response.metadata.get("input_bucket"),
                 "output_bucket": response.metadata.get("output_bucket"),
                 "predicted_cost": float(response.metadata.get("predicted_cost", 0.0)),
+                "benchmark": response.metadata.get("benchmark"),
+                "dataset_name": response.metadata.get("dataset_name"),
+                "task_family": response.metadata.get("task_family"),
+                "expected_output": response.metadata.get("expected_output"),
             }
             self.request_records.append(record)
             records.append(record)
@@ -105,6 +112,16 @@ class MetricsCollector:
         queue_delay_series = request_df["queue_delay"] if "queue_delay" in request_df.columns else pd.Series(dtype=float)
         predicted_cost_series = (
             request_df["predicted_cost"] if "predicted_cost" in request_df.columns else pd.Series(dtype=float)
+        )
+        non_empty_series = (
+            request_df["output_text"].fillna("").astype(str).str.strip() != ""
+            if "output_text" in request_df.columns
+            else pd.Series(dtype=bool)
+        )
+        valid_response_series = (
+            request_df["success"].astype(bool) & non_empty_series
+            if not request_df.empty and not non_empty_series.empty
+            else pd.Series(dtype=bool)
         )
 
         if cost_per_1m_tokens is not None:
@@ -159,6 +176,8 @@ class MetricsCollector:
             queue_delay_mean=float(queue_delay_series.mean()) if not queue_delay_series.empty else 0.0,
             queue_delay_std=float(queue_delay_series.std(ddof=0)) if not queue_delay_series.empty else 0.0,
             queue_delay_p95=float(queue_delay_series.quantile(0.95)) if not queue_delay_series.empty else 0.0,
+            non_empty_rate=float(non_empty_series.mean()) if not non_empty_series.empty else 0.0,
+            valid_response_rate=float(valid_response_series.mean()) if not valid_response_series.empty else 0.0,
             predicted_cost_mean=float(predicted_cost_series.mean()) if not predicted_cost_series.empty else 0.0,
             predicted_cost_total=predicted_cost_total,
             cost_efficiency_tokens_per_cost=cost_efficiency_tokens_per_cost,
@@ -211,6 +230,8 @@ class MetricsCollector:
             "error_rate",
             "queue_delay_mean",
             "queue_delay_p95",
+            "non_empty_rate",
+            "valid_response_rate",
             "predicted_cost_mean",
             "predicted_cost_total",
             "cost_efficiency_tokens_per_cost",

@@ -90,6 +90,10 @@ class RequestScheduler:
                             "input_bucket": scheduled.request.metadata.get("input_bucket"),
                             "output_bucket": scheduled.request.metadata.get("output_bucket"),
                             "predicted_cost": scheduled.request.metadata.get("predicted_cost", 0.0),
+                            "benchmark": scheduled.request.metadata.get("benchmark"),
+                            "dataset_name": scheduled.request.metadata.get("dataset_name"),
+                            "task_family": scheduled.request.metadata.get("task_family"),
+                            "expected_output": scheduled.request.metadata.get("expected_output"),
                         }
                     )
                     async with response_lock:

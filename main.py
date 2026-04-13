@@ -7,9 +7,6 @@ from typing import Any
 
 import yaml
 
-from engines.hf_engine import HFLocalEngine
-from engines.tgi_engine import TGIEngine
-from engines.vllm_engine import VLLMEngine
 from experiments.experiment_runner import ExperimentRunner
 from metrics.gpu_monitor import GPUMonitor
 from metrics.metrics_collector import MetricsCollector
@@ -27,10 +24,16 @@ def build_engine(engine_config: dict[str, Any]):
     name = engine_config["name"]
     model = engine_config["model"]
     if name == "vllm":
+        from engines.vllm_engine import VLLMEngine
+
         return VLLMEngine(base_url=engine_config["base_url"], model_name=model)
     if name == "tgi":
+        from engines.tgi_engine import TGIEngine
+
         return TGIEngine(base_url=engine_config["base_url"], model_name=model)
     if name == "hf_transformers":
+        from engines.hf_engine import HFLocalEngine
+
         return HFLocalEngine(
             model_name=model,
             device=engine_config.get("device", "cuda"),
