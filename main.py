@@ -11,7 +11,6 @@ from experiments.experiment_runner import ExperimentRunner
 from metrics.gpu_monitor import GPUMonitor
 from metrics.metrics_collector import MetricsCollector
 from metrics.run_recorder import RunRecorder
-from visualization.plot_results import ResultPlotter
 from workload.workload_generator import WorkloadGenerator
 
 
@@ -46,7 +45,6 @@ async def run(config: dict[str, Any], config_path: str | Path) -> None:
     workload_generator = WorkloadGenerator(seed=config["project"].get("seed"))
     workload = workload_generator.generate(config["workload"])
     metrics_collector = MetricsCollector()
-    result_plotter = ResultPlotter()
     run_recorder = RunRecorder(project_root=Path(__file__).resolve().parent)
 
     gpu_monitor = None
@@ -101,10 +99,17 @@ async def run(config: dict[str, Any], config_path: str | Path) -> None:
     if gpu_monitor is not None:
         gpu_monitor.save_csv(results["gpu_csv"])
 
-    result_plotter.plot_all(
-        summary_csv=results["summary_csv"],
-        output_dir=results["plots_dir"],
-    )
+    try:
+        from visualization.plot_results import ResultPlotter
+
+        result_plotter = ResultPlotter()
+        result_plotter.plot_all(
+            summary_csv=results["summary_csv"],
+            output_dir=results["plots_dir"],
+        )
+    except ModuleNotFoundError as error:
+        print(f"Warning: plotting skipped because an optional dependency is missing: {error}")
+
     run_recorder.record(
         config=config,
         config_path=config_path,
