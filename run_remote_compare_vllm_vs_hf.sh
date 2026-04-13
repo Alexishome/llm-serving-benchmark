@@ -6,6 +6,8 @@ HF_CONFIG="${2:-experiments/experiment_config_remote_synthetic_hf_baseline.yaml}
 VLLM_MODEL="${VLLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}"
 VLLM_PORT="${VLLM_PORT:-8000}"
 VLLM_LOG="${VLLM_LOG:-/workspace/vllm_remote_compare.log}"
+VLLM_READY_TIMEOUT_SECONDS="${VLLM_READY_TIMEOUT_SECONDS:-420}"
+VLLM_READY_POLL_SECONDS="${VLLM_READY_POLL_SECONDS:-2}"
 
 if [ ! -d "/workspace/vllm-env" ]; then
   echo "Missing /workspace/vllm-env. Create or restore the virtual environment first." >&2
@@ -33,16 +35,17 @@ nohup vllm serve "${VLLM_MODEL}" --host 0.0.0.0 --port "${VLLM_PORT}" >"${VLLM_L
 VLLM_PID=$!
 
 echo "Waiting for vLLM readiness..."
-for _ in $(seq 1 120); do
+READY_ATTEMPTS=$((VLLM_READY_TIMEOUT_SECONDS / VLLM_READY_POLL_SECONDS))
+for _ in $(seq 1 "${READY_ATTEMPTS}"); do
   if curl -sf "http://127.0.0.1:${VLLM_PORT}/v1/models" >/dev/null; then
     echo "vLLM is ready."
     break
   fi
-  sleep 2
+  sleep "${VLLM_READY_POLL_SECONDS}"
 done
 
 if ! curl -sf "http://127.0.0.1:${VLLM_PORT}/v1/models" >/dev/null; then
-  echo "vLLM failed to become ready. Recent log tail:" >&2
+  echo "vLLM failed to become ready within ${VLLM_READY_TIMEOUT_SECONDS} seconds. Recent log tail:" >&2
   tail -n 50 "${VLLM_LOG}" >&2 || true
   exit 1
 fi
