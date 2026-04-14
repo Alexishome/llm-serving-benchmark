@@ -1,0 +1,64 @@
+project:
+  name: "LLM Serving Benchmark Framework for Clinical NLP Workloads"
+  seed: 42
+
+workload:
+  mode: "mimic_bhc"
+  dataset_path: "data/data acl"
+  tokenizer_name: "distilgpt2"
+  cost_model:
+    input_weight: 1.0
+    output_weight: 1.5
+    kv_cache_weight: 0.25
+    task_weights:
+      question_answering: 1.0
+      information_extraction: 1.0
+      summarization: 1.3
+  num_requests: 50
+
+experiments:
+  concurrency_levels: [1]
+  request_rates: [0.5]
+  batch_sizes: [1]
+  trials: 1
+  cost_per_1m_tokens: null
+
+scheduler:
+  policy: "fifo"
+  input_weight: 1.0
+  output_weight: 1.0
+  task_priorities:
+    question_answering: 2
+    information_extraction: 2
+    summarization: 1
+
+engines:
+  default_kwargs:
+    temperature: 0.0
+  backends:
+    - name: "vllm"
+      enabled: true
+      model: "Qwen/Qwen2.5-1.5B-Instruct"
+      base_url: "http://127.0.0.1:8000"
+    - name: "tgi"
+      enabled: false
+      model: "Qwen/Qwen2.5-1.5B-Instruct"
+      base_url: "http://localhost:8080"
+    - name: "hf_transformers"
+      enabled: false
+      model: "Qwen/Qwen2.5-1.5B-Instruct"
+      device: "cuda"
+      torch_dtype: "auto"
+
+results:
+  output_dir: "results/remote_mimic_bhc_vllm_fifo_50"
+  request_csv: "results/remote_mimic_bhc_vllm_fifo_50/request_metrics.csv"
+  request_json: "results/remote_mimic_bhc_vllm_fifo_50/request_metrics.json"
+  summary_csv: "results/remote_mimic_bhc_vllm_fifo_50/summary_metrics.csv"
+  summary_json: "results/remote_mimic_bhc_vllm_fifo_50/summary_metrics.json"
+  gpu_csv: "results/remote_mimic_bhc_vllm_fifo_50/gpu_metrics.csv"
+  plots_dir: "results/remote_mimic_bhc_vllm_fifo_50/plots"
+
+gpu_monitor:
+  enabled: true
+  poll_interval: 1.0
