@@ -223,3 +223,51 @@ This currently reports:
 - validity / lightweight quality for each run separately
 - generic output agreement (`exact_match_rate`, `normalized_exact_match_rate`)
 - `pubhealth` label agreement between the two runs
+
+## Dataset-Specific Quality Metrics
+
+The three real-data workloads in this project represent different task families, so the right quality metric depends on the dataset.
+
+- `pubhealth`
+  - task type: fact checking / label prediction
+  - best metrics: `accuracy`, `macro_f1`
+- `mimic_bhc`
+  - task type: clinical summarization
+  - best metrics: `ROUGE-L`, optionally `ROUGE-1` and `BERTScore`
+- `blue`
+  - mixed-task biomedical suite, so the metric depends on the subtask
+  - `biosses`: Pearson / Spearman correlation
+  - `chemprot`: `accuracy`, `macro_f1`
+  - `ddi2013-type`: `accuracy`, `macro_f1`
+  - `hoc`: micro-F1 / macro-F1
+  - `bc5cdr`: entity-level precision / recall / F1
+
+The current built-in validity metrics:
+
+- `success_rate`
+- `non_empty_rate`
+- `valid_response_rate`
+
+measure serving validity rather than full task correctness. They help detect failed or empty generations, but they do not by themselves prove that vLLM preserves answer quality relative to the HF baseline.
+
+## Prepared 7B Real-Data Suites
+
+Ready-to-run 7B configs are included for:
+
+- `Qwen/Qwen2.5-7B-Instruct`
+- `50 requests`
+- `fifo`
+- `concurrency = 1`
+- `request_rate = 0.5`
+
+Run on the baseline pod:
+
+```bash
+bash run_real_baseline_suite_qwen25_7b.sh
+```
+
+Run on the vLLM pod:
+
+```bash
+bash run_real_vllm_suite_qwen25_7b.sh
+```
