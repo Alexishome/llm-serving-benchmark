@@ -209,3 +209,17 @@ Current support includes:
 - label-based automatic evaluation for `pubhealth` with `accuracy` and `macro_f1`
 
 This is intended as a lightweight quality sanity check to complement serving metrics, not as a full task-benchmark replacement.
+
+To compare two engine runs directly (for example, HF baseline vs vLLM on the same dataset), use:
+
+```bash
+python -m quality.compare_engines \
+  --baseline results/remote_pubhealth_hf_baseline_50/request_metrics.json \
+  --candidate results/remote_pubhealth_vllm_fifo_50/request_metrics.json
+```
+
+This currently reports:
+
+- validity / lightweight quality for each run separately
+- generic output agreement (`exact_match_rate`, `normalized_exact_match_rate`)
+- `pubhealth` label agreement between the two runs
