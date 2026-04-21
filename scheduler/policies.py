@@ -104,6 +104,62 @@ class ServiceClassPriorityPolicy(BaseSchedulingPolicy):
         return (service_priority, cost_score, arrival_index)
 
 
+class LongPrefillIsolationPolicy(BaseSchedulingPolicy):
+    """Protect short interactive traffic from long-prefill / high-risk requests.
+
+    This policy is intentionally route-aware. It uses metadata from the
+    control-plane profiler/router and defers long-context clinical traffic
+    behind standard, cache-affine, and interactive requests. Within each lane,
+    it still sorts by predicted cost to avoid unnecessarily expensive requests
+    blocking cheaper requests of the same class.
+    """
+
+    DEFAULT_ROUTE_PRIORITIES = {
+        "standard": 0,
+        "cache_affine": 1,
+        "long_prefill": 3,
+        "high_risk": 4,
+    }
+    DEFAULT_SERVICE_CLASS_PRIORITIES = {
+        "interactive": 0,
+        "verification": 0,
+        "standard": 1,
+        "standard_generation": 2,
+        "cache_affine": 2,
+        "batch_long_context": 4,
+        "background": 5,
+    }
+
+    def priority(self, request: WorkloadRequest, arrival_index: int) -> tuple[Any, ...]:
+        route_priorities = {
+            **self.DEFAULT_ROUTE_PRIORITIES,
+            **(self.config.task_priorities or {}),
+        }
+        route_name = str(request.metadata.get("route_name") or "standard")
+        service_class = str(request.metadata.get("service_class") or "standard")
+        route_priority = route_priorities.get(route_name, 100)
+        service_priority = self.DEFAULT_SERVICE_CLASS_PRIORITIES.get(service_class, 100)
+        risk_score = float(request.metadata.get("profile_quality_risk_score") or 0.0)
+        prefill_cost = float(
+            request.metadata.get("profile_prefill_cost") or request.input_tokens
+        )
+        cost_score = float(
+            request.metadata.get(
+                "predicted_cost",
+                self.config.input_weight * request.input_tokens
+                + self.config.output_weight * request.max_output_tokens,
+            )
+        )
+        return (
+            route_priority,
+            service_priority,
+            risk_score,
+            prefill_cost,
+            cost_score,
+            arrival_index,
+        )
+
+
 def build_policy(config: dict[str, Any] | None = None) -> BaseSchedulingPolicy:
     raw_config = config or {}
     name = str(raw_config.get("policy", "fifo")).lower()
@@ -118,6 +174,7 @@ def build_policy(config: dict[str, Any] | None = None) -> BaseSchedulingPolicy:
         "shortest_input_first": ShortestInputFirstPolicy,
         "predicted_cost_first": PredictedCostPolicy,
         "service_class_priority": ServiceClassPriorityPolicy,
+        "long_prefill_isolation": LongPrefillIsolationPolicy,
         "task_priority": TaskPriorityPolicy,
         "hybrid": HybridPolicy,
     }

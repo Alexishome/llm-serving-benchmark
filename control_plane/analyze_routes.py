@@ -66,6 +66,18 @@ def _group_summary(df: pd.DataFrame, group_col: str) -> list[dict[str, Any]]:
                 "mean_predicted_cost": float(group["predicted_cost"].mean())
                 if "predicted_cost" in group.columns
                 else 0.0,
+                "mean_latency": float(group["latency"].mean())
+                if "latency" in group.columns
+                else 0.0,
+                "p95_latency": float(group["latency"].quantile(0.95))
+                if "latency" in group.columns and len(group)
+                else 0.0,
+                "mean_queue_delay": float(group["queue_delay"].mean())
+                if "queue_delay" in group.columns
+                else 0.0,
+                "p95_queue_delay": float(group["queue_delay"].quantile(0.95))
+                if "queue_delay" in group.columns and len(group)
+                else 0.0,
                 "mean_profile_prefill_cost": float(group["profile_prefill_cost"].mean())
                 if "profile_prefill_cost" in group.columns
                 else 0.0,
@@ -149,17 +161,21 @@ def render_markdown(summary: dict[str, Any]) -> str:
         "",
         "## Route Distribution",
         "",
-        "| Route | Count | Share | Success | Mean Input | Mean Output | Mean Cost | Mean Risk | Mean Cache Affinity |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Route | Count | Share | Success | Mean Latency | P95 Latency | Mean Queue | P95 Queue | Mean Input | Mean Output | Mean Cost | Mean Risk | Mean Cache Affinity |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
 
     for row in summary.get("routes", []):
         lines.append(
-            "| {route} | {count} | {share} | {success} | {input_tokens} | {output_tokens} | {cost} | {risk} | {cache} |".format(
+            "| {route} | {count} | {share} | {success} | {latency} | {p95_latency} | {queue} | {p95_queue} | {input_tokens} | {output_tokens} | {cost} | {risk} | {cache} |".format(
                 route=row.get("route_name", "unknown"),
                 count=row.get("count", 0),
                 share=_format_float(row.get("share", 0.0)),
                 success=_format_float(row.get("success_rate", 0.0)),
+                latency=_format_float(row.get("mean_latency", 0.0)),
+                p95_latency=_format_float(row.get("p95_latency", 0.0)),
+                queue=_format_float(row.get("mean_queue_delay", 0.0)),
+                p95_queue=_format_float(row.get("p95_queue_delay", 0.0)),
                 input_tokens=_format_float(row.get("mean_input_tokens", 0.0)),
                 output_tokens=_format_float(row.get("mean_output_tokens", 0.0)),
                 cost=_format_float(row.get("mean_predicted_cost", 0.0)),
@@ -173,16 +189,20 @@ def render_markdown(summary: dict[str, Any]) -> str:
             "",
             "## Dataset Distribution",
             "",
-            "| Dataset | Count | Share | Mean Input | Mean Output | Mean Risk |",
-            "| --- | ---: | ---: | ---: | ---: | ---: |",
+            "| Dataset | Count | Share | Mean Latency | P95 Latency | Mean Queue | P95 Queue | Mean Input | Mean Output | Mean Risk |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         ]
     )
     for row in summary.get("datasets", []):
         lines.append(
-            "| {dataset} | {count} | {share} | {input_tokens} | {output_tokens} | {risk} |".format(
+            "| {dataset} | {count} | {share} | {latency} | {p95_latency} | {queue} | {p95_queue} | {input_tokens} | {output_tokens} | {risk} |".format(
                 dataset=row.get("dataset_name", "unknown"),
                 count=row.get("count", 0),
                 share=_format_float(row.get("share", 0.0)),
+                latency=_format_float(row.get("mean_latency", 0.0)),
+                p95_latency=_format_float(row.get("p95_latency", 0.0)),
+                queue=_format_float(row.get("mean_queue_delay", 0.0)),
+                p95_queue=_format_float(row.get("p95_queue_delay", 0.0)),
                 input_tokens=_format_float(row.get("mean_input_tokens", 0.0)),
                 output_tokens=_format_float(row.get("mean_output_tokens", 0.0)),
                 risk=_format_float(row.get("mean_quality_risk_score", 0.0)),

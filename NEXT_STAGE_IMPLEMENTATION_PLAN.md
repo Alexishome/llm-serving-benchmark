@@ -17,6 +17,31 @@ The main research direction is:
 
 > Build a workflow-aware, cost-aware, quality-risk-aware serving control plane that routes clinical and biomedical workload stages across appropriate serving paths.
 
+## Focused Direction After EMNLP Review
+
+The direction does not need to be replaced, but it should be narrowed.
+
+The project should not try to be:
+
+- a generic vLLM benchmark
+- a full multi-agent hospital system
+- a broad survey of every possible serving optimization
+- a large model-scaling study with many unrelated experiments
+
+The focused paper direction is:
+
+> Clinical workload-aware control plane improves serving efficiency without hurting output quality.
+
+This means the next version should center on:
+
+1. a mixed clinical workload that better approximates future clinical AI systems
+2. a lightweight profiler/router that classifies requests before engine execution
+3. a service-class-aware scheduler that uses workflow metadata
+4. evidence that the policy improves latency / queue delay / GPU behavior
+5. evidence that quality is preserved
+
+This framing is a better fit for an EMNLP short-paper-style contribution because it turns the project from "benchmarking engines" into "a system and evaluation methodology for clinical NLP serving."
+
 ## Architecture Layers
 
 1. Request profiler
@@ -34,7 +59,7 @@ The main research direction is:
 
 ### Phase 1: Request Profiling and Route Logging
 
-Status: started.
+Status: implemented.
 
 Implemented:
 
@@ -62,12 +87,18 @@ Goal:
 
 ### Phase 2: Route-Aware Analysis
 
-Next to implement:
+Status: implemented as a standalone analyzer.
+
+Implemented:
 
 - route summary markdown generation
 - route distribution by dataset
 - route distribution by workflow stage and service class
-- mean latency / queue delay / GPU behavior by route
+- route-level request profile summaries
+
+Still useful to add later:
+
+- mean latency / queue delay / GPU behavior by route inside the standard run summary
 
 Minimal output:
 
@@ -75,6 +106,8 @@ Minimal output:
 - `route_summary.md`
 
 ### Phase 3: Logical Multi-Lane Simulation
+
+Status: started through route metadata and mixed-workload experiments.
 
 Next:
 
@@ -93,6 +126,12 @@ Why:
 - avoids overengineering before the route signal is validated
 
 ### Phase 4: Lane-Specific Scheduling
+
+Status: first policy implemented.
+
+Implemented:
+
+- `service_class_priority`
 
 Next:
 
@@ -146,21 +185,28 @@ Use quality signals to decide:
 
 ## Immediate Next Tasks
 
-1. Run the mixed clinical scheduler suite after pulling the control-plane metadata changes:
+1. Finish the missing 7B vLLM single-dataset runs if the server is already available:
+
+- `MIMIC-BHC`
+- `BLUE`
+
+These complete the clean 7B HF vs vLLM comparison table.
+
+2. Run the mixed clinical scheduler suite after pulling the control-plane metadata changes:
 
 ```bash
 bash run_mixed_clinical_scheduler_suite_qwen25_7b.sh
 ```
 
-2. Generate route analysis using:
+3. Generate route analysis using:
 
 ```bash
 python -m control_plane.analyze_routes \
   --request-metrics results/<run>/request_metrics.json
 ```
 
-3. Add route summary generation to the normal experiment output.
 4. Compare `fifo`, `predicted_cost_first`, and `service_class_priority` on the same mixed workload.
+5. Add task-quality and agreement checks to avoid making a speed-only claim.
 
 ## Recommended Paper Framing
 
@@ -174,3 +220,31 @@ The system contribution is not just faster inference. It is:
 - routing by cost, prefill burden, cache affinity, service class, and quality risk
 - preserving quality-aware escalation as a future extension
 - treating scheduling as lane-level execution policy rather than the whole contribution
+
+## Paper Readiness Criteria
+
+For a credible short-paper submission, the project should have:
+
+- a clear claim: workflow-aware control improves serving efficiency for clinical LLM workloads
+- one mixed clinical benchmark built from real datasets
+- at least three policies compared on the same workload: `fifo`, `predicted_cost_first`, `service_class_priority`
+- latency, tail latency, queue delay, throughput, and GPU metrics
+- quality-preservation evidence:
+  - PubHealth accuracy / macro-F1
+  - BLUE task-level metrics where feasible
+  - MIMIC-BHC summary similarity metrics
+  - vLLM-vs-HF output agreement where exact labels are not enough
+- an ablation showing what the profiler/router metadata changes compared with cost-only scheduling
+
+## Deferred Future Work
+
+These remain valuable, but should not distract from the core paper story:
+
+- full multi-engine router
+- small-model / large-model escalation
+- verifier model routing
+- full clinical agent workflow implementation
+- many model-size sweeps
+- extensive vLLM internal parameter tuning
+
+They can be framed as the natural extension after the control-plane signal is validated.

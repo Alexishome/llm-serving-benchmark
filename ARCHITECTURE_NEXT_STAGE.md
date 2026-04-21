@@ -9,6 +9,21 @@ The goal is no longer just to compare engines. The goal is to add a **serving op
 - use GPU resources more efficiently
 - protect output quality on risky clinical / biomedical requests
 
+## Focused Paper Claim
+
+The project should not be framed as a broad engine benchmark or a collection of unrelated optimizations. The focused research claim is:
+
+> Future clinical AI systems will generate heterogeneous LLM serving workloads. A lightweight workflow-aware control plane can classify requests by task, cost, cache affinity, and quality risk, then schedule them more efficiently than generic FIFO or cost-only policies while preserving clinical NLP output quality.
+
+This keeps the system aligned with EMNLP-style NLP systems work:
+
+- `Clinical and Biomedical Applications`
+- `Efficient Methods for NLP`
+- `LLM Agents`
+- `From models to systems and ecosystems`
+
+The current `HF baseline vs vLLM` experiments are still useful, but they should be treated as the engine-level foundation. The paper-level contribution should be the control plane above the engine.
+
 ## System Diagram
 
 ```text
@@ -214,6 +229,59 @@ This is the smallest step that:
 - fits the current codebase
 - preserves your existing scheduler work
 - moves the system toward a publishable control-plane contribution
+
+## Main Experimental Story
+
+The main experiment should compare scheduling and routing behavior on a mixed clinical workload rather than only isolated datasets.
+
+Primary workload:
+
+- `PubHealth`: short factual verification
+- `MIMIC-BHC`: long clinical summarization
+- `BLUE`: biomedical extraction, classification, similarity, and related subtasks
+
+Primary policies:
+
+- `fifo`
+- `predicted_cost_first`
+- `service_class_priority`
+
+Primary efficiency metrics:
+
+- mean latency
+- p95 / p99 latency
+- queue delay
+- throughput
+- GPU utilization
+- GPU memory
+
+Primary quality checks:
+
+- PubHealth accuracy / macro-F1
+- BLUE subtask metrics where labels are available
+- MIMIC-BHC summary similarity metrics
+- output agreement between vLLM and HF baseline where exact quality labels are unavailable
+
+The key question is:
+
+> Does the workflow-aware policy improve serving efficiency on heterogeneous clinical workloads without causing a measurable quality drop?
+
+## Scope Control
+
+The next paper version should avoid spreading across too many directions. These are useful, but should be future work unless the core mixed-workload story is already strong:
+
+- many model-size sweeps
+- complex multi-engine deployment
+- full agent workflow implementation
+- large-scale vLLM internal parameter tuning
+- multiple simultaneous GPUs as a required assumption
+
+The near-term system should instead prioritize a clean, reproducible comparison of:
+
+- one strong model family
+- one mixed clinical workload
+- a small set of interpretable scheduling/control-plane policies
+- efficiency metrics plus quality-preservation checks
 
 ## What We Should Build Next
 

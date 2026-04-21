@@ -323,6 +323,7 @@ and compares:
 - `fifo`
 - `predicted_cost_first`
 - `service_class_priority`
+- `long_prefill_isolation`
 
 Run it on the vLLM pod while the 7B vLLM server is already running:
 
