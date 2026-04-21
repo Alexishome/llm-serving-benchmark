@@ -3,6 +3,8 @@ from __future__ import annotations
 import random
 from typing import Any
 
+from control_plane.request_profiler import ClinicalRequestProfiler
+from control_plane.request_router import HeuristicRequestRouter
 from optimization.cost_model import build_cost_model
 from workload.benchmark_adapters import ACLWorkloadAdapter, BLUEWorkloadAdapter, LEvalWorkloadAdapter
 from workload.dataset_loader import DatasetLoader
@@ -30,6 +32,8 @@ class WorkloadGenerator:
         self._tokenizer = None
         self._tokenizer_name: str | None = None
         self._cost_model = build_cost_model()
+        self._profiler = ClinicalRequestProfiler()
+        self._router = HeuristicRequestRouter()
 
     def generate(self, config: dict[str, Any]) -> list[WorkloadRequest]:
         self._configure_tokenizer(config)
@@ -45,6 +49,8 @@ class WorkloadGenerator:
             return self._finalize_requests(self._load_cochrane(config))
         if mode == "mimic_bhc":
             return self._finalize_requests(self._load_mimic_bhc(config))
+        if mode == "mixed_clinical":
+            return self._finalize_requests(self._load_mixed_clinical(config))
         if mode == "dataset":
             return self._finalize_requests(self._from_dataset(config))
         return self._finalize_requests(self._synthetic(config))
@@ -167,6 +173,90 @@ class WorkloadGenerator:
         requests = adapter.load_mimic_bhc(root_dir, limit=num_requests)
         return requests if num_requests is None else requests[:num_requests]
 
+    def _load_mixed_clinical(self, config: dict[str, Any]) -> list[WorkloadRequest]:
+        """Build a heterogeneous clinical / biomedical workload.
+
+        This mode is designed for control-plane and scheduler experiments where
+        service class matters. It mixes light verification, long clinical
+        summarization, and biomedical extraction/classification requests.
+        """
+
+        num_requests = int(config.get("num_requests", 60))
+        mix = config.get(
+            "mix",
+            {
+                "pubhealth": 0.4,
+                "mimic_bhc": 0.3,
+                "blue": 0.3,
+            },
+        )
+        source_requests = {
+            "pubhealth": self._load_pubhealth(
+                {
+                    **config,
+                    "mode": "pubhealth",
+                    "dataset_path": config.get("acl_dataset_path", "data/data acl"),
+                    "num_requests": num_requests,
+                }
+            ),
+            "mimic_bhc": self._load_mimic_bhc(
+                {
+                    **config,
+                    "mode": "mimic_bhc",
+                    "dataset_path": config.get("acl_dataset_path", "data/data acl"),
+                    "num_requests": num_requests,
+                }
+            ),
+            "blue": self._load_blue(
+                {
+                    **config,
+                    "mode": "blue",
+                    "dataset_path": config.get("blue_dataset_path", "data/blue_data"),
+                    "num_requests": num_requests,
+                }
+            ),
+        }
+
+        available_sources = {
+            name: requests for name, requests in source_requests.items() if requests
+        }
+        if not available_sources:
+            return []
+
+        weights = {
+            name: float(mix.get(name, 0.0))
+            for name in available_sources
+        }
+        if sum(weights.values()) <= 0:
+            weights = {name: 1.0 for name in available_sources}
+
+        source_positions = {name: 0 for name in available_sources}
+        mixed_requests: list[WorkloadRequest] = []
+        source_names = list(available_sources)
+        source_weights = [weights[name] for name in source_names]
+
+        while len(mixed_requests) < num_requests:
+            source_name = self._random.choices(source_names, weights=source_weights, k=1)[0]
+            requests = available_sources[source_name]
+            position = source_positions[source_name] % len(requests)
+            source_positions[source_name] += 1
+            original = requests[position]
+            metadata = dict(original.metadata)
+            metadata["mixed_source"] = source_name
+            metadata.setdefault("workflow_id", f"mixed-{len(mixed_requests):05d}")
+            mixed_requests.append(
+                WorkloadRequest(
+                    request_id=f"mixed-{len(mixed_requests):05d}-{original.request_id}",
+                    prompt=original.prompt,
+                    input_tokens=original.input_tokens,
+                    max_output_tokens=original.max_output_tokens,
+                    task_type=original.task_type,
+                    metadata=metadata,
+                )
+            )
+
+        return mixed_requests
+
     def _weighted_bucket_choice(self, weights: dict[str, float]) -> str:
         buckets = list(weights.keys())
         return self._random.choices(buckets, weights=[weights[b] for b in buckets], k=1)[0]
@@ -206,12 +296,30 @@ class WorkloadGenerator:
 
     def _configure_cost_model(self, config: dict[str, Any]) -> None:
         self._cost_model = build_cost_model(config.get("cost_model"))
+        self._profiler = ClinicalRequestProfiler(cost_model_config=config.get("cost_model"))
 
     def _finalize_requests(self, requests: list[WorkloadRequest]) -> list[WorkloadRequest]:
         finalized: list[WorkloadRequest] = []
         for request in requests:
             metadata = dict(request.metadata)
             metadata["predicted_cost"] = self._cost_model.predict(request)
+            profile = self._profiler.profile(request)
+            route_decision = self._router.route(profile)
+            metadata.update(
+                {
+                    "profile_task_family": profile.task_family,
+                    "workflow_stage": profile.workflow_stage,
+                    "service_class": profile.service_class,
+                    "profile_prefill_cost": profile.prefill_cost,
+                    "profile_decode_cost": profile.decode_cost,
+                    "profile_total_cost": profile.total_cost,
+                    "profile_cache_affinity_score": profile.cache_affinity_score,
+                    "profile_quality_risk_score": profile.quality_risk_score,
+                    "route_name": route_decision.route_name,
+                    "route_reason": route_decision.reason,
+                    "route_score": route_decision.score,
+                }
+            )
             finalized.append(
                 WorkloadRequest(
                     request_id=request.request_id,

@@ -91,6 +91,17 @@ class MetricsCollector:
                 "dataset_name": response.metadata.get("dataset_name"),
                 "task_family": response.metadata.get("task_family"),
                 "expected_output": response.metadata.get("expected_output"),
+                "profile_task_family": response.metadata.get("profile_task_family"),
+                "workflow_stage": response.metadata.get("workflow_stage"),
+                "service_class": response.metadata.get("service_class"),
+                "profile_prefill_cost": response.metadata.get("profile_prefill_cost"),
+                "profile_decode_cost": response.metadata.get("profile_decode_cost"),
+                "profile_total_cost": response.metadata.get("profile_total_cost"),
+                "profile_cache_affinity_score": response.metadata.get("profile_cache_affinity_score"),
+                "profile_quality_risk_score": response.metadata.get("profile_quality_risk_score"),
+                "route_name": response.metadata.get("route_name"),
+                "route_reason": response.metadata.get("route_reason"),
+                "route_score": response.metadata.get("route_score"),
             }
             self.request_records.append(record)
             records.append(record)

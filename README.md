@@ -138,6 +138,7 @@ This script will:
 - Configure `workload.cost_model` to estimate per-request inference cost from input length, output length, KV-cache pressure, and task type.
 - Enable or disable backends under `engines.backends`.
 - Choose a scheduling policy under `scheduler.policy` to compare FIFO against workload-aware serving strategies.
+- Use `scheduler.policy: service_class_priority` to prioritize requests using control-plane service classes such as `interactive`, `standard_generation`, and `batch_long_context`.
 - Add a new backend by subclassing `BaseEngine` and extending `build_engine()` in [main.py](/Users/alextang/Downloads/llm serving benchmark/llm-benchmark/main.py).
 - Summary results now include `latency_p95`, `latency_p99`, and queueing metrics to evaluate scheduling behavior.
 - Plot generation now includes scheduler-aware tail-latency, queue-delay, and predicted-cost efficiency figures when those metrics are present.
@@ -224,6 +225,43 @@ This currently reports:
 - generic output agreement (`exact_match_rate`, `normalized_exact_match_rate`)
 - `pubhealth` label agreement between the two runs
 
+## Route-Aware Analysis
+
+The next-stage control-plane prototype attaches request profiling and routing metadata to each request:
+
+- `profile_task_family`
+- `workflow_stage`
+- `service_class`
+- `profile_prefill_cost`
+- `profile_decode_cost`
+- `profile_total_cost`
+- `profile_cache_affinity_score`
+- `profile_quality_risk_score`
+- `route_name`
+- `route_reason`
+- `route_score`
+
+You can summarize those route decisions with:
+
+```bash
+python -m control_plane.analyze_routes \
+  --request-metrics results/remote_pubhealth_hf_baseline_50/request_metrics.json
+```
+
+To save a markdown report:
+
+```bash
+python -m control_plane.analyze_routes \
+  --request-metrics results/remote_pubhealth_hf_baseline_50/request_metrics.json \
+  --markdown-output results/remote_pubhealth_hf_baseline_50/route_summary.md
+```
+
+This is useful for checking whether the control plane is already separating:
+
+- `PubHealth` into lighter `standard` traffic
+- `MIMIC-BHC` into `long_prefill` / `high_risk` traffic
+- heterogeneous `BLUE` subtasks into different route profiles
+
 ## Dataset-Specific Quality Metrics
 
 The three real-data workloads in this project represent different task families, so the right quality metric depends on the dataset.
@@ -270,4 +308,24 @@ Run on the vLLM pod:
 
 ```bash
 bash run_real_vllm_suite_qwen25_7b.sh
+```
+
+## Mixed Clinical Scheduler Suite
+
+For the next-stage workflow-aware control-plane experiments, use the mixed clinical workload suite. It mixes:
+
+- `PubHealth`
+- `MIMIC-BHC`
+- `BLUE`
+
+and compares:
+
+- `fifo`
+- `predicted_cost_first`
+- `service_class_priority`
+
+Run it on the vLLM pod while the 7B vLLM server is already running:
+
+```bash
+bash run_mixed_clinical_scheduler_suite_qwen25_7b.sh
 ```

@@ -69,6 +69,41 @@ class HybridPolicy(BaseSchedulingPolicy):
         return (task_priority, cost_score, arrival_index)
 
 
+class ServiceClassPriorityPolicy(BaseSchedulingPolicy):
+    """Prioritize requests by workflow service class, then by predicted cost.
+
+    This is the first bridge between the new control-plane metadata and the
+    existing lane-level scheduler. Lower priority values run earlier.
+    """
+
+    DEFAULT_SERVICE_CLASS_PRIORITIES = {
+        "interactive": 0,
+        "verification": 1,
+        "standard": 2,
+        "standard_generation": 3,
+        "cache_affine": 3,
+        "batch_long_context": 4,
+        "background": 5,
+    }
+
+    def priority(self, request: WorkloadRequest, arrival_index: int) -> tuple[Any, ...]:
+        configured_priorities = self.config.task_priorities or {}
+        priorities = {
+            **self.DEFAULT_SERVICE_CLASS_PRIORITIES,
+            **configured_priorities,
+        }
+        service_class = str(request.metadata.get("service_class") or "standard")
+        service_priority = priorities.get(service_class, 100)
+        cost_score = float(
+            request.metadata.get(
+                "predicted_cost",
+                self.config.input_weight * request.input_tokens
+                + self.config.output_weight * request.max_output_tokens,
+            )
+        )
+        return (service_priority, cost_score, arrival_index)
+
+
 def build_policy(config: dict[str, Any] | None = None) -> BaseSchedulingPolicy:
     raw_config = config or {}
     name = str(raw_config.get("policy", "fifo")).lower()
@@ -82,6 +117,7 @@ def build_policy(config: dict[str, Any] | None = None) -> BaseSchedulingPolicy:
         "fifo": FIFOPolicy,
         "shortest_input_first": ShortestInputFirstPolicy,
         "predicted_cost_first": PredictedCostPolicy,
+        "service_class_priority": ServiceClassPriorityPolicy,
         "task_priority": TaskPriorityPolicy,
         "hybrid": HybridPolicy,
     }

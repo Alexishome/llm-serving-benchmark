@@ -94,6 +94,21 @@ class RequestScheduler:
                             "dataset_name": scheduled.request.metadata.get("dataset_name"),
                             "task_family": scheduled.request.metadata.get("task_family"),
                             "expected_output": scheduled.request.metadata.get("expected_output"),
+                            "profile_task_family": scheduled.request.metadata.get("profile_task_family"),
+                            "workflow_stage": scheduled.request.metadata.get("workflow_stage"),
+                            "service_class": scheduled.request.metadata.get("service_class"),
+                            "profile_prefill_cost": scheduled.request.metadata.get("profile_prefill_cost"),
+                            "profile_decode_cost": scheduled.request.metadata.get("profile_decode_cost"),
+                            "profile_total_cost": scheduled.request.metadata.get("profile_total_cost"),
+                            "profile_cache_affinity_score": scheduled.request.metadata.get(
+                                "profile_cache_affinity_score"
+                            ),
+                            "profile_quality_risk_score": scheduled.request.metadata.get(
+                                "profile_quality_risk_score"
+                            ),
+                            "route_name": scheduled.request.metadata.get("route_name"),
+                            "route_reason": scheduled.request.metadata.get("route_reason"),
+                            "route_score": scheduled.request.metadata.get("route_score"),
                         }
                     )
                     async with response_lock:
