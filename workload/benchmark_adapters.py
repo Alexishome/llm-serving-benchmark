@@ -274,10 +274,12 @@ class ACLWorkloadAdapter:
                 reader = csv.DictReader(handle, delimiter="\t")
                 for row in reader:
                     prompt = (
-                        "Assess the following public-health claim using the evidence article.\n\n"
+                        "You are a strict public-health fact-checking classifier.\n"
+                        "Choose exactly one label from this list: true, false, mixture, unproven.\n"
+                        "Return only the label. Do not explain.\n\n"
                         f"Claim: {row['claim']}\n\n"
                         f"Evidence Article:\n{row['main_text']}\n\n"
-                        "Return the fact-check label for the claim."
+                        "Label:"
                     )
                     expected_output = str(row["label"])
                     requests.append(
